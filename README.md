@@ -55,6 +55,7 @@ Log output goes to stderr, since stdout carries the MCP protocol.
 | `start_crm_login` | Begins Entra device-code sign-in and returns the code and URL to visit. Returns immediately; the sign-in completes in the background. |
 | `crm_login_status` | Reports whether that sign-in has finished, is still pending, or failed. |
 | `search_crm_accounts` | Searches real CRM accounts by name. Requires a completed sign-in. Returns up to 25 matches with `id`, `name`, `status`, and `sales_rep`. |
+| `get_crm_account` | Fetches full details for a single CRM account by `account_id`. Requires a completed sign-in. |
 | `search_accounts` | Searches a small hardcoded list of sample accounts. No auth needed — used for testing the wiring without a live CRM. |
 
 ### Sign-in flow
@@ -63,7 +64,7 @@ Log output goes to stderr, since stdout carries the MCP protocol.
 
 1. Call `start_crm_login`. It returns the device code and the URL to open.
 2. Complete sign-in in the browser.
-3. Call `crm_login_status` to confirm. Once it reports a signed-in user, `search_crm_accounts` will work.
+3. Call `crm_login_status` to confirm. Once it reports a signed-in user, `search_crm_accounts` and `get_crm_account` will work.
 
 The token is held in memory only — restarting the server means signing in again.
 
