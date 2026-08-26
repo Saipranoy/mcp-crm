@@ -10,7 +10,7 @@ type Account = {
   active: boolean;
 };
 
-const accounts: Account[] = [
+const practiceAccounts: Account[] = [
   { name: "Vision Optics", city: "London", active: true },
   { name: "Bright Eyes", city: "Manchester", active: false },
   { name: "Clear View", city: "London", active: true },
@@ -148,6 +148,29 @@ async function searchCrmAccounts(query: string): Promise<CrmAccountsResponse> {
   return (await response.json()) as CrmAccountsResponse;
 }
 
+async function getCrmAccount(accountId: string): Promise<Record<string, unknown>> {
+  if (!crmAccessToken) {
+    throw new Error("Please run start_crm_login first.");
+  }
+
+  const url = new URL(
+    `/api/accounts/${encodeURIComponent(accountId)}`,
+    crmApiBaseUrl
+  );
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${crmAccessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`CRM account lookup failed: ${response.status}`);
+  }
+
+  return (await response.json()) as Record<string, unknown>;
+}
+
 function createServer() {
   const server = new McpServer({
     name: "crm-learning-mcp",
@@ -217,7 +240,7 @@ function createServer() {
       }),
     },
     async ({ query }) => {
-      const results = accounts.filter((account) =>
+      const results = practiceAccounts.filter((account) =>
         account.name.toLowerCase().includes(query.toLowerCase())
       );
 
@@ -265,6 +288,40 @@ function createServer() {
             {
               type: "text",
               text: error instanceof Error ? error.message : "CRM account search failed.",
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_crm_account",
+    {
+      description: "Get full details for one CRM account by account ID. Access follows the signed-in user's CRM permissions.",
+      inputSchema: z.object({
+        account_id: z.string().min(1).max(128),
+      }),
+    },
+    async ({ account_id }) => {
+      try {
+        const account = await getCrmAccount(account_id);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(account, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: error instanceof Error ? error.message : "CRM account lookup failed.",
             },
           ],
           isError: true,
