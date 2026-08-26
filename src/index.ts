@@ -11,9 +11,9 @@ type Account = {
 };
 
 const practiceAccounts: Account[] = [
-  { name: "Vision Optics", city: "London", active: true },
-  { name: "Bright Eyes", city: "Manchester", active: false },
-  { name: "Clear View", city: "London", active: true },
+  { name: "Northwind Traders", city: "London", active: true },
+  { name: "Contoso Ltd", city: "Manchester", active: false },
+  { name: "Fabrikam Inc", city: "London", active: true },
 ];
 
 const entraClientId = process.env.ENTRA_CLIENT_ID;
@@ -22,6 +22,22 @@ const crmApiBaseUrl = process.env.CRM_API_BASE_URL;
 
 if (!entraClientId || !entraTenantId || !crmApiBaseUrl) {
   throw new Error("Missing Entra or CRM settings in .env");
+}
+
+// Normalized once so every request builds URLs the same way. The trailing
+// slash plus relative paths below keep any path in CRM_API_BASE_URL intact
+// (a leading-slash path would silently resolve against the origin instead).
+const crmBaseUrl = new URL(
+  crmApiBaseUrl.endsWith("/") ? crmApiBaseUrl : `${crmApiBaseUrl}/`
+);
+
+// Routes are configurable so this server can target any CRM exposing the
+// contract in README.md, rather than hardcoding one deployment's layout.
+const crmAuthPath = process.env.CRM_AUTH_PATH ?? "api/auth/entra";
+const crmAccountsPath = process.env.CRM_ACCOUNTS_PATH ?? "api/accounts";
+
+function crmUrl(path: string): URL {
+  return new URL(path.replace(/^\//, ""), crmBaseUrl);
 }
 
 const msalClient = new PublicClientApplication({
@@ -61,7 +77,7 @@ let loginInProgress = false;
 let loginError: string | null = null;
 
 async function exchangeMicrosoftToken(idToken: string): Promise<CrmLoginResponse> {
-  const response = await fetch(`${crmApiBaseUrl}/api/auth/entra`, {
+  const response = await fetch(crmUrl(crmAuthPath), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -130,7 +146,7 @@ async function searchCrmAccounts(query: string): Promise<CrmAccountsResponse> {
     throw new Error("Please run start_crm_login first.");
   }
 
-  const url = new URL("/api/accounts", crmApiBaseUrl);
+  const url = crmUrl(crmAccountsPath);
   url.searchParams.set("search", query);
   url.searchParams.set("fields", "id,name,status,sales_rep");
   url.searchParams.set("limit", "25");
@@ -153,10 +169,7 @@ async function getCrmAccount(accountId: string): Promise<Record<string, unknown>
     throw new Error("Please run start_crm_login first.");
   }
 
-  const url = new URL(
-    `/api/accounts/${encodeURIComponent(accountId)}`,
-    crmApiBaseUrl
-  );
+  const url = crmUrl(`${crmAccountsPath}/${encodeURIComponent(accountId)}`);
 
   const response = await fetch(url, {
     headers: {

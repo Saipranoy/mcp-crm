@@ -8,7 +8,7 @@ Sign-in goes through Microsoft Entra using the device-code flow. The resulting i
 
 - Node.js 20+
 - An Entra app registration with the device-code (public client) flow enabled
-- A CRM API that accepts an Entra token at `POST /api/auth/entra` and serves `GET /api/accounts`
+- A CRM API implementing the contract below
 
 ## Setup
 
@@ -16,15 +16,25 @@ Sign-in goes through Microsoft Entra using the device-code flow. The resulting i
 npm install
 ```
 
-Create a `.env` in the project root:
+Copy `.env.example` to `.env` and fill it in:
 
-```
-ENTRA_CLIENT_ID=<your app registration's client id>
-ENTRA_TENANT_ID=<your directory tenant id>
-CRM_API_BASE_URL=https://your-crm.example.com
+```bash
+cp .env.example .env
 ```
 
-All three are required — the server throws on startup if any is missing. `.env` is gitignored; never commit it.
+`ENTRA_CLIENT_ID`, `ENTRA_TENANT_ID`, and `CRM_API_BASE_URL` are required — the server throws on startup if any is missing. `.env` is gitignored; never commit it.
+
+## CRM contract
+
+The server targets any CRM exposing these three routes. Paths are relative to `CRM_API_BASE_URL` and can be remapped with the optional `CRM_AUTH_PATH` and `CRM_ACCOUNTS_PATH` variables, so a CRM that mounts them elsewhere needs no code change.
+
+| Route | Purpose |
+| --- | --- |
+| `POST api/auth/entra` | Accepts `{ "token": "<entra id token>" }`, returns `{ access_token, user }`. |
+| `GET api/accounts` | Query params `search`, `fields`, `limit`. Returns `{ data, total, limit, offset }`. |
+| `GET api/accounts/{id}` | Returns one account object. |
+
+All CRM requests send `Authorization: Bearer <access_token>`, so results reflect the signed-in user's own permissions.
 
 ## Running
 
