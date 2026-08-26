@@ -80,4 +80,4 @@ The token is held in memory only — restarting the server means signing in agai
 
 ## License
 
-ISC
+ISC — see [LICENSE](LICENSE).
